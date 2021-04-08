@@ -4,30 +4,28 @@ import numpy as np
 from utils.loaders import ImageLoader, load_default, log
 
 
+def box_count(img, size):
+    boxes = np.add.reduceat(
+        np.add.reduceat(img, np.arange(0, img.shape[0], size), axis=0),
+        np.arange(0, img.shape[1], size),
+        axis=1
+    )
+
+    return len(np.where((boxes > 0) & (boxes < size * size))[0])
+
+
 def fractal_dimension(loader: ImageLoader):
     loader.grayscale_img()
-    img_bw = cv2.threshold(loader.img, 127, 255, cv2.THRESH_BINARY)[1] / 255
+    img_bin = cv2.threshold(loader.img, 127, 255, cv2.THRESH_BINARY)[1] / 255
 
-    min_dimension = min(img_bw.shape)
+    min_dimension = min(img_bin.shape)
     greatest_power = 2 ** np.floor(np.log(min_dimension) / np.log(2))
     exponent = int(np.log(greatest_power) / np.log(2))
 
-    scales = 2 ** np.arange(exponent, 0, -1)
+    sizes = 2 ** np.arange(exponent, 0, -1)
 
-    n = []
-    for scale in scales:
-        boxes = np.add.reduceat(
-            np.add.reduceat(img_bw, np.arange(0, img_bw.shape[0], scale), axis=0),
-            np.arange(0, img_bw.shape[1], scale),
-            axis=1,
-        )
-        non_empty_boxes_number = len(
-            np.where((boxes > 0) & (boxes < scale ** 2))[0]
-        )
-
-        n.append(non_empty_boxes_number)
-
-    coeffs = np.polyfit(np.log(1 / scales), np.log(n), 1)
+    cnt = [box_count(img_bin, size) for size in sizes]
+    coeffs = np.polyfit(np.log(1 / sizes), np.log(cnt), 1)
 
     return coeffs[0]
 
